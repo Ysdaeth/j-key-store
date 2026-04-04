@@ -55,6 +55,6 @@ class KeyEntry implements Destroyable {
 
     @Override
     public boolean isDestroyed(){
-        return key == null;
+        return key == null && publicKey == null;
     }
 }
