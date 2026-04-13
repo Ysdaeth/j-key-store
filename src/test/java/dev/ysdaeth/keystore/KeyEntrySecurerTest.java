@@ -7,11 +7,11 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.Key;
 import java.security.SecureRandom;
 
-class KeyEntrySecurerPBKDF2Test {
+class KeyEntrySecurerTest {
 
     @Test
     void encrypt_shouldBeReversible() throws Exception {
-        KeyEntrySecurerPBKDF2 securerPBKDF2 = new KeyEntrySecurerPBKDF2( new EncryptorAesGcm() );
+        KeyEntrySecurer securerPBKDF2 = new KeyEntrySecurer( new EncryptorAesGcm() );
         byte[] encoded = new byte[16];
         new SecureRandom().nextBytes(encoded);
         char[] password = "password".toCharArray();
