@@ -108,7 +108,7 @@ class SecureKeyEntrySerializerTest {
         SecuredKeyEntry actual = SecureKeyEntrySerializer.deserialize(
                 SecureKeyEntrySerializer.serialize(expected) );
 
-        Assertions.assertEquals(expected.derivationParams(), actual.derivationParams(), "Protection params should not be changed");
+        Assertions.assertEquals(expected.kdfParams(), actual.kdfParams(), "Protection params should not be changed");
     }
 
     private SecuredKeyEntry createEntrySymmetric(String alias){
@@ -116,7 +116,7 @@ class SecureKeyEntrySerializerTest {
         Map<String,String> protectionParams = Map.of(
                 "type","PBEKDF2","salt","randomSalt"
         );
-        return new SecuredKeyEntry(alias, "AES", expectedPrivateKey, "PASSWORD","AES", protectionParams);
+        return new SecuredKeyEntry(alias, "AES", expectedPrivateKey, "KDF-ALG", protectionParams);
     }
 
     private SecuredKeyEntry createEntryAsymmetric(String alias){
@@ -132,6 +132,6 @@ class SecureKeyEntrySerializerTest {
                 "type","PBEKDF2","salt","randomSalt"
         );
 
-        return new SecuredKeyEntry(alias, "RSA", expectedPrivateKey, expectedPublicKey, "PASSWORD", "AES", protectionParams);
+        return new SecuredKeyEntry(alias, "RSA", expectedPrivateKey, expectedPublicKey, "KFD-ALG", protectionParams);
     }
 }

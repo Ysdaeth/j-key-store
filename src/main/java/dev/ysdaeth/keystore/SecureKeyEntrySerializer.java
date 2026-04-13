@@ -12,8 +12,8 @@ final class SecureKeyEntrySerializer {
         dynamicSetter.put("ALG", (val,b)->b.keyAlg(val));
         dynamicSetter.put("KEY", (val,b)->b.key(Base64.getDecoder().decode(val)) );
         dynamicSetter.put("PUB-KEY", (val,b)->b.pubKey(Base64.getDecoder().decode(val)) );
-        dynamicSetter.put("DERIVATION-ALG",(val,b)->b.derivationAlg(val));
-        dynamicSetter.put("DERIVATION", (val,b)->b.derivationParams( parseProtectionEntry(val) ));
+        dynamicSetter.put("KDF-ALG",(val,b)->b.derivationAlg(val));
+        dynamicSetter.put("KDF-PARAM", (val,b)->b.addKdfParam( parseProtectionEntry(val) ));
     }
 
     static String serialize(SecuredKeyEntry entry){
@@ -23,13 +23,13 @@ final class SecureKeyEntrySerializer {
         builder.append("ALIAS:").append(entry.alias());
         builder.append('\n').append("ALG:").append(entry.keyAlg());
         builder.append('\n').append("KEY:").append(key);
-        if(pubKey !=null ) builder.append('\n').append("KEY-PUB:").append(pubKey);
-        builder.append('\n').append("DERIVATION-ALG:").append(entry.derivationAlg());
+        if(pubKey !=null ) builder.append('\n').append("PUB-KEY:").append(pubKey);
+        builder.append('\n').append("KDF-ALG:").append(entry.kdfAlg());
 
-        for(Map.Entry<String,String> mapEntry: entry.derivationParams().entrySet()){
+        for(Map.Entry<String,String> mapEntry: entry.kdfParams().entrySet()){
             String param = mapEntry.getKey();
             String arg = mapEntry.getValue();
-            builder.append('\n').append("DERIVATION:").append(param).append('=').append(arg);
+            builder.append('\n').append("KDF-PARAM:").append(param).append('=').append(arg);
         }
         return builder.toString();
     }

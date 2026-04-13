@@ -1,5 +1,6 @@
 package dev.ysdaeth.keystore;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -7,16 +8,16 @@ record SecuredKeyEntry(String alias,
                        String keyAlg,
                        byte[] key,
                        byte[] pubKey,
-                       String derivationAlg,
-                       Map<String,String> derivationParams
+                       String kdfAlg,
+                       Map<String,String> kdfParams
 ) {
 
     SecuredKeyEntry(String alias,
                     String keyAlg,
                     byte[] key,
-                    String derivationAlg,
-                    Map<String,String> derivationParams) {
-        this(alias, keyAlg, key, null, derivationAlg, derivationParams);
+                    String kdfAlg,
+                    Map<String,String> kdfParams) {
+        this(alias, keyAlg, key, null, kdfAlg, kdfParams);
     }
 
     /**
@@ -24,13 +25,13 @@ record SecuredKeyEntry(String alias,
      * @param alias key alias
      * @param keyAlg key algorithm
      * @param key encrypted key bytes
-     * @param derivationParams protection parameters like key derivation function, or salt, etc.
+     * @param kdfParams protection parameters like key derivation function, or salt, etc.
      */
     SecuredKeyEntry {
         Objects.requireNonNull(alias, "alias must not be null");
         Objects.requireNonNull(keyAlg, "Key algorithm must not be null");
         Objects.requireNonNull(key, "Key must not be null");
-        Objects.requireNonNull(derivationAlg,"Protection algorithm must not be null");
+        Objects.requireNonNull(kdfAlg,"Protection algorithm must not be null");
     }
 
     static Builder builder(){
@@ -42,8 +43,8 @@ record SecuredKeyEntry(String alias,
         private String keyAlg;
         private byte[] key;
         private byte[] pubKey;
-        private String derivationAlg;
-        private Map<String,String> derivationParams;
+        private String kdfAlg;
+        private Map<String,String> kdfParams = new HashMap<>();
 
         Builder alias(String alias){
             this.alias = alias;
@@ -65,15 +66,19 @@ record SecuredKeyEntry(String alias,
             return this;
         }
         Builder derivationAlg(String protectionType){
-            this.derivationAlg = protectionType;
+            this.kdfAlg = protectionType;
             return this;
         }
-        Builder derivationParams(Map<String,String> params){
-            this.derivationParams = params;
+        Builder kdfParams(Map<String,String> params){
+            this.kdfParams = params;
+            return this;
+        }
+        Builder addKdfParam(Map.Entry<String,String> entry){
+            this.kdfParams.put(entry.getKey(), entry.getValue());
             return this;
         }
         SecuredKeyEntry build(){
-            return new SecuredKeyEntry(alias, keyAlg, key, pubKey, derivationAlg, derivationParams);
+            return new SecuredKeyEntry(alias, keyAlg, key, pubKey, kdfAlg, kdfParams);
         }
     }
 }

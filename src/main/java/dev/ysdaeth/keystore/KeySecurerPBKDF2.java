@@ -55,13 +55,13 @@ class KeySecurerPBKDF2 {
                 .key(encrypted)
                 .pubKey(entry.publicKey())
                 .derivationAlg(KDF_IDENTIFIER)
-                .derivationParams(derivationParams)
+                .kdfParams(derivationParams)
                 .build();
 
     }
 
     KeyEntry revealEntry(SecuredKeyEntry entry, char[] password) throws UnrecoverableEntryException{
-        Map<String,String> derivationParams = entry.derivationParams();
+        Map<String,String> derivationParams = entry.kdfParams();
 
         byte[] salt = Base64.getDecoder().decode( derivationParams.get("salt") );
         int iterations = Integer.parseInt( derivationParams.get("iterations") );
