@@ -9,10 +9,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.security.KeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.UnrecoverableEntryException;
+import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.util.Base64;
@@ -24,6 +21,8 @@ class KeySecurerPBKDF2 {
 
     private static final String KDF_INSTANCE = "PBKDF2WithHmacSHA256";
     private static final String KDF_IDENTIFIER = "PBKDF2-HMAC-SHA256";
+    private static final AlgorithmIdentifier AES_GCM_IDENTIFIER = Encryptors.IDENTIFIER_AES_GCM;
+
     public static int ITERATIONS = 65536;
     private final EncryptionManager manager;
 
@@ -31,19 +30,18 @@ class KeySecurerPBKDF2 {
         manager = Encryptors.createEncryptionManager();
     }
 
-    SecuredKeyEntry secureEntry(KeyEntry entry, char[] password, AlgorithmIdentifier algorithmIdentifier)
-            throws AlgorithmIdentificationException {
-
-        String protectionKeyAlg = Encryptors.resolveKeyAlgorithm(algorithmIdentifier);
-        int protectionKeySize = Encryptors.resolveKeyLength(algorithmIdentifier);
-
+    SecuredKeyEntry secureEntry(KeyEntry entry, char[] password) {
+        String protectionKeyAlg;
+        int protectionKeySize;
+        byte[] encrypted;
         byte[] salt = new byte[16];
         new SecureRandom().nextBytes(salt);
 
-        byte[] encrypted;
         try{
+            protectionKeyAlg = Encryptors.resolveKeyAlgorithm(AES_GCM_IDENTIFIER);
+            protectionKeySize = Encryptors.resolveKeyLength(AES_GCM_IDENTIFIER);
             SecretKey encryptionKey = createKey(password, ITERATIONS, salt, protectionKeyAlg, protectionKeySize);
-            encrypted = manager.encrypt(entry.key(),encryptionKey,algorithmIdentifier).getEncoded();
+            encrypted = manager.encrypt(entry.key(),encryptionKey, AES_GCM_IDENTIFIER).getEncoded();
         }catch (Exception e){
             throw new RuntimeException("Key encryption failed." + e.getMessage(), e);
         }
@@ -60,7 +58,7 @@ class KeySecurerPBKDF2 {
 
     }
 
-    KeyEntry revealEntry(SecuredKeyEntry entry, char[] password) throws UnrecoverableEntryException{
+    KeyEntry revealEntry(SecuredKeyEntry entry, char[] password) throws UnrecoverableEntryException {
         Map<String,String> derivationParams = entry.kdfParams();
 
         byte[] salt = Base64.getDecoder().decode( derivationParams.get("salt") );
@@ -73,10 +71,13 @@ class KeySecurerPBKDF2 {
         try{
             SecretKey decryptionKey = createKey(password, iterations, salt, protectionKeyAlg, keySize);
             key = manager.decrypt(encryptedKey, decryptionKey);
-        }catch (Exception e){
-            if(e instanceof KeyException)
-                throw new UnrecoverableEntryException("Unable to recover key entry. " +e.getMessage());
+        }catch (AlgorithmIdentificationException |
+                NoSuchAlgorithmException |
+                InvalidKeySpecException e){
+
             throw new RuntimeException("Key derivation failed." +e.getMessage(), e);
+        }catch (KeyException e){
+            throw new UnrecoverableEntryException("Password does not match. "+ e.getMessage());
         }
 
         return new KeyEntry(entry.alias(), entry.keyAlg(),key, entry.pubKey());
@@ -93,6 +94,8 @@ class KeySecurerPBKDF2 {
 
     private static SecretKey createKey(char[] password, int iterations, byte[] salt, String keyAlgorithm, int keyLength)
             throws NoSuchAlgorithmException, InvalidKeySpecException {
+
+        Objects.requireNonNull(password,"Password must not be null");
         KeySpec spec = new PBEKeySpec(password, salt, iterations, keyLength);
         byte[] keyBytes = SecretKeyFactory.getInstance(KDF_INSTANCE).generateSecret(spec).getEncoded();
         return new SecretKeySpec(keyBytes, keyAlgorithm);
