@@ -11,10 +11,24 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.release>17</maven.compiler.release>
+    <maven.compiler.release>25</maven.compiler.release>
   </properties>
 
   <dependencies>
+
+    <dependency>
+      <groupId>dev.ysdaeth.autocrypt</groupId>
+      <artifactId>j-autocrypt-core</artifactId>
+      <version>0.1</version>
+    </dependency>
+
+    <dependency>
+      <groupId>dev.ysdaeth.autocrypt</groupId>
+      <artifactId>j-autocrypt-aes-gcm</artifactId>
+      <version>0.1</version>
+    </dependency>
+
+
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-api</artifactId>

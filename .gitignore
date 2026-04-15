@@ -14,6 +14,8 @@ target/
 *.ipr
 #public 
 .idea
+src/test/resources/temp/**
+
 
 ### Eclipse ###
 .apt_generated

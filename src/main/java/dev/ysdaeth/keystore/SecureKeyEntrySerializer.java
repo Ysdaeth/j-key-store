@@ -5,16 +5,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
-final class KeyEntrySerializer {
+final class SecureKeyEntrySerializer {
     private static final Map<String, BiConsumer<String, SecuredKeyEntry.Builder>> dynamicSetter = new HashMap<>();
     static{
         dynamicSetter.put("ALIAS", (val,b)->b.alias(val));
         dynamicSetter.put("ALG", (val,b)->b.keyAlg(val));
         dynamicSetter.put("KEY", (val,b)->b.key(Base64.getDecoder().decode(val)) );
-        dynamicSetter.put("KEY-PUB", (val,b)->b.pubKey(Base64.getDecoder().decode(val)) );
-        dynamicSetter.put("PROTECTION-TYPE",(val,b)->b.protectionType(val));
-        dynamicSetter.put("PROTECTION-ALG",(val,b)->b.protectionAlg(val));
-        dynamicSetter.put("PROTECTION", (val,b)->b.addProtectionParam( parseProtectionEntry(val) ));
+        dynamicSetter.put("PUB-KEY", (val,b)->b.pubKey(Base64.getDecoder().decode(val)) );
+        dynamicSetter.put("KDF-ALG",(val,b)->b.derivationAlg(val));
+        dynamicSetter.put("KDF-PARAM", (val,b)->b.addKdfParam( parseProtectionEntry(val) ));
     }
 
     static String serialize(SecuredKeyEntry entry){
@@ -24,14 +23,13 @@ final class KeyEntrySerializer {
         builder.append("ALIAS:").append(entry.alias());
         builder.append('\n').append("ALG:").append(entry.keyAlg());
         builder.append('\n').append("KEY:").append(key);
-        if(pubKey !=null ) builder.append('\n').append("KEY-PUB:").append(pubKey);
-        builder.append('\n').append("PROTECTION-TYPE:").append(entry.protectionType());
-        builder.append('\n').append("PROTECTION-ALG:").append(entry.protectionAlg());
+        if(pubKey !=null ) builder.append('\n').append("PUB-KEY:").append(pubKey);
+        builder.append('\n').append("KDF-ALG:").append(entry.kdfAlg());
 
-        for(Map.Entry<String,String> mapEntry: entry.protectionParams().entrySet()){
+        for(Map.Entry<String,String> mapEntry: entry.kdfParams().entrySet()){
             String param = mapEntry.getKey();
             String arg = mapEntry.getValue();
-            builder.append('\n').append("PROTECTION:").append(param).append('=').append(arg);
+            builder.append('\n').append("KDF-PARAM:").append(param).append('=').append(arg);
         }
         return builder.toString();
     }

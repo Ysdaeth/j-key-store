@@ -16,6 +16,8 @@ import java.util.HexFormat;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
+import static dev.ysdaeth.keystore.KeyStore.KEY_FILE_EXTENSION;
+
 class KeyStoreTest {
     private static AtomicInteger storeCount = new AtomicInteger(0);
     final static Path testDir = Path.of("src", "test", "resources", "temp", "keystoreTest");
@@ -69,7 +71,7 @@ class KeyStoreTest {
     }
 
     @Test
-    void getSecretKey_shouldReturnTheSameKey_whenExist() throws Exception {
+    void getSecretKey_shouldReturnTheSameKeyBytesAndAlias_whenExist() throws Exception {
         KeyStore keyStore = createStore();
 
         String alias = "alias";
@@ -79,9 +81,11 @@ class KeyStoreTest {
         keyStore.store(alias, expectedKey, password);
         SecretKey actualKey = keyStore.getKey(alias,password).orElse(null);
 
-        boolean bytesEqual = Arrays.equals(expectedKey.getEncoded(), actualKey.getEncoded() );
-        boolean algorithmEquals = expectedKey.getAlgorithm().equals( actualKey.getAlgorithm() );
-        Assertions.assertTrue(bytesEqual && algorithmEquals, "Key store should return the same key pair");
+        Assertions.assertArrayEquals(expectedKey.getEncoded(),actualKey.getEncoded(),
+                "method should return the same encoded bytes");
+
+        Assertions.assertEquals(expectedKey.getAlgorithm(), actualKey.getAlgorithm(),
+                "method should return the same key algorithm");
     }
 
     @Test
@@ -143,7 +147,7 @@ class KeyStoreTest {
         }
 
         HexFormat format = HexFormat.of();
-        return format.formatHex(hash) + ".key";
+        return format.formatHex(hash) + KEY_FILE_EXTENSION;
     }
 
 }
