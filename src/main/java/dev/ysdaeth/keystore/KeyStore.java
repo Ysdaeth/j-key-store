@@ -11,6 +11,12 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.HexFormat;
 import java.util.Optional;
 
+/**
+ * It works with most symmetric keys since it uses simple {@link javax.crypto.spec.SecretKeySpec} to recreate key.
+ * Supported key pairs are limited to the ones that are encoded with X509 and PKCS8.
+ * Class supports dynamic encryption algorithm detection to provide proper decryption algorithm instance when
+ * current encryption algorithm is changed.
+ */
 public class KeyStore {
     static final String KEY_FILE_EXTENSION = ".entry";
 
@@ -116,7 +122,7 @@ public class KeyStore {
     }
 
     /**
-     * Returns key pair assigned to the specified key alias.
+     * Returns key pair assigned to the specified key alias. Key pair must support x509 and PKCS8 encoding
      * @param alias alias assigned to the key pair
      * @param password password set for entry
      * @return key pair if exist
@@ -140,7 +146,7 @@ public class KeyStore {
     }
 
     /**
-     * Loads the key entry file, and performs decryption operation. Returns empty if alias does not exist,
+     * Loads the secured key entry file, and performs decryption operation. Returns empty if alias does not exist,
      * else return optional of key entry
      * @param alias alias of the key entry
      * @param password password used for generating encryption key

@@ -4,6 +4,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * Key entry is container for metadata to recreate encryption key from the Key Derivation Function, Key metadata
+ * and wrapper for the symmetric or asymmetric key.
+ * @param alias alias of the key to store
+ * @param keyAlg algorithm of the key to store
+ * @param key Secret key, or private key if stored is key pair
+ * @param pubKey public key or {@code null} when key is symmetric
+ * @param kdfAlg Key Derivation Function algorithm, that converts password to the encryption key
+ * @param kdfParams parameters to recreate encryption key.
+ */
 record SecuredKeyEntry(String alias,
                        String keyAlg,
                        byte[] key,
