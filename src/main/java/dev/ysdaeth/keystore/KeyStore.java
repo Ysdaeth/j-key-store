@@ -110,12 +110,16 @@ public class KeyStore {
      * @return key pair if exist
      * @throws UnrecoverableEntryException when password does not match.
      * @throws IORuntimeException when entry exists, but failed to read file from the drive
+     * @throws KeySymmetryException when key entry is for {@link KeyPair}
      */
-    public Optional<SecretKey> getKey(String alias, char[] password)
-            throws IORuntimeException, UnrecoverableEntryException {
+    public Optional<SecretKey> getSecretKey(String alias, char[] password)
+            throws UnrecoverableEntryException, KeySymmetryException, IORuntimeException {
 
         KeyEntry entry = loadKeyEntry(alias, password).orElse(null);
         if(entry == null) return Optional.empty();
+
+        if(entry.publicKey() != null) throw new KeySymmetryException(
+                "Key with alias '"+ alias +"' is not symmetric key");
 
         SecretKey key = KeyRevitalizer.revitalizeKey(entry.key(), entry.keyAlg());
         return Optional.of(key);
@@ -128,12 +132,16 @@ public class KeyStore {
      * @return key pair if exist
      * @throws UnrecoverableEntryException when password does not match.
      * @throws IORuntimeException when failed to read file from the drive
+     * @throws KeySymmetryException when key entry is for {@link SecretKey}
      */
     public Optional<KeyPair> getKeyPair(String alias, char[] password)
-            throws UnrecoverableEntryException, IORuntimeException {
+            throws UnrecoverableEntryException, KeySymmetryException, IORuntimeException {
 
         KeyEntry entry = loadKeyEntry(alias,password).orElse(null);
         if(entry == null) return Optional.empty();
+
+        if(entry.publicKey() == null) throw new KeySymmetryException(
+                "Key with alias '"+ alias +"' is not asymmetric key");
 
         KeyPair keyPair;
         try{
