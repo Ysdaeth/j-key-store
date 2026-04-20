@@ -3,7 +3,7 @@ package dev.ysdaeth.keystore;
 import dev.ysdaeth.autocrypt.AlgorithmIdentificationException;
 import dev.ysdaeth.autocrypt.AlgorithmIdentifier;
 import dev.ysdaeth.autocrypt.AlgorithmOutput;
-import dev.ysdaeth.autocrypt.encryption.EncryptionManager;
+import dev.ysdaeth.autocrypt.EncryptionManager;
 
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;

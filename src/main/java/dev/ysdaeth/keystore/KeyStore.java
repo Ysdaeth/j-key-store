@@ -21,7 +21,7 @@ public class KeyStore {
     static final String KEY_FILE_EXTENSION = ".entry";
 
     private final Path keyStorePath;
-    KeySecurerPBKDF2 keySecurerPBKDF2;
+    private final KeySecurerPBKDF2 keySecurerPBKDF2;
 
     /**
      * Creates a key store, unlike {@link java.security.KeyStore}, it creates a directory rather than a single file.
@@ -47,9 +47,9 @@ public class KeyStore {
      * @param key key to be encrypted and stored
      * @param password password that will be used for key derivation with PBKDF2 to create encryption key
      * @throws IORuntimeException when key file can not be created
-     * @throws EntryAlreadyExists when key with specified alias already exists
+     * @throws EntryAlreadyExistsException when key with specified alias already exists
      */
-    public void store(String alias, SecretKey key, char[] password) throws IORuntimeException, EntryAlreadyExists {
+    public void store(String alias, SecretKey key, char[] password) throws IORuntimeException, EntryAlreadyExistsException {
         KeyEntry entry = new KeyEntry(alias, key.getAlgorithm(), key.getEncoded());
         try {
             storeKeyEntry(entry, password);
@@ -68,9 +68,9 @@ public class KeyStore {
      * @param keyPair key pair to be encrypted and saved
      * @param password password that will be used for key derivation with PBKDF2 to create encryption key
      * @throws IORuntimeException when key file can not be created
-     * @throws EntryAlreadyExists when key with specified alias already exists
+     * @throws EntryAlreadyExistsException when key with specified alias already exists
      */
-    public void store(String alias, KeyPair keyPair, char[] password) throws IORuntimeException, EntryAlreadyExists {
+    public void store(String alias, KeyPair keyPair, char[] password) throws IORuntimeException, EntryAlreadyExistsException {
         PrivateKey privateKey = keyPair.getPrivate();
         PublicKey publicKey = keyPair.getPublic();
         String keyAlg = privateKey.getAlgorithm();
@@ -93,7 +93,7 @@ public class KeyStore {
     private void storeKeyEntry(KeyEntry entry, char[] password) throws IOException {
         String filename = createFilename(entry.alias());
         Path filePath = Path.of(keyStorePath.toString(),filename);
-        if(filePath.toFile().exists()) throw new EntryAlreadyExists(
+        if(filePath.toFile().exists()) throw new EntryAlreadyExistsException(
                 "Entry with specified alias already exists: '" + entry.alias() +"'");
 
         SecuredKeyEntry secured = keySecurerPBKDF2.secureEntry(entry, password);
