@@ -130,6 +130,30 @@ class KeyStoreTest {
         );
     }
 
+    @Test
+    void delete_shouldDeleteOnlyOneKeyFile() throws Exception {
+        String keyStoreName = "deleteTest_"+ storeCount.addAndGet(1);
+        KeyStore keyStore = new KeyStore(testDir, keyStoreName);
+
+        SecretKey key = KeyGenerator.getInstance("AES").generateKey();
+
+        String toRemoveAlias = "delete_shouldDeleteKeyFile";
+        Path toRemovePath = Path.of(testDir.toString(), keyStoreName, createFilename(toRemoveAlias));
+        keyStore.store(toRemoveAlias, key, "password".toCharArray());
+
+        String toNotRemoveAlias = "not_removed_alias";
+        Path toNotRemovePath = Path.of(testDir.toString(), keyStoreName, createFilename(toNotRemoveAlias));
+        keyStore.store(toNotRemoveAlias, key, "password".toCharArray());
+
+        keyStore.delete(toRemoveAlias);
+
+        boolean removedNotExists = Files.exists(toRemovePath);
+        Assertions.assertFalse(removedNotExists, "Key file was not removed");
+
+        boolean notRemovedExists = Files.exists(toNotRemovePath);
+        Assertions.assertTrue(notRemovedExists, "Incorrect key file was removed");
+    }
+
     private KeyStore createStore() throws Exception{
         String name = "test_"+ storeCount.addAndGet(1);
         return new KeyStore(testDir,name);

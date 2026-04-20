@@ -146,6 +146,21 @@ public class KeyStore {
     }
 
     /**
+     * Removes key file with specified alias from the key store.
+     * @param alias alias of the key to be removed.
+     * @throws IORuntimeException when key file was not accessible due to IOException
+     */
+    public void delete(String alias) throws IORuntimeException {
+        String filename = createFilename(alias);
+        Path keyfilePath = Path.of(keyStorePath.toString(), filename);
+        try{
+            Files.delete(keyfilePath);
+        }catch (IOException e){
+            throw new IORuntimeException("Failed to remove key file." + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Loads the secured key entry file, and performs decryption operation. Returns empty if alias does not exist,
      * else return optional of key entry
      * @param alias alias of the key entry
