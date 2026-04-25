@@ -112,7 +112,7 @@ class KeyStoreTest {
         KeyStore keyStore = createStore();
         keyStore.store(alias,key, password);
 
-        Assertions.assertThrowsExactly(KeySymmetryException.class,
+        Assertions.assertThrowsExactly(KeyEntrySymmetryException.class,
                 ()->keyStore.getKeyPair(alias, password)
         );
     }
@@ -154,7 +154,7 @@ class KeyStoreTest {
         KeyStore keyStore = createStore();
         keyStore.store(alias, pair, password);
 
-        Assertions.assertThrowsExactly(KeySymmetryException.class,
+        Assertions.assertThrowsExactly(KeyEntrySymmetryException.class,
                 ()->keyStore.getSecretKey(alias, password)
         );
     }

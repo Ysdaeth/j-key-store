@@ -1,14 +1,14 @@
 # Key store for java
-Library for storing the keys in the local storage in the easy and secure way.
+Library to store the keys in the local storage in the easy and secure way.
 
 ## Simple API
 API designed to store the keys in a secure and easy way, when all that you think about is 
-to store the key, and get the key secured with password.
+to store the key and get the key.
 
 ## Different passwords  
 Unlike Java KeyStore, each key can have its own password.
 Additionally, even when using the same password, a new encryption key is
-generated each time, that means each encryption key is used only once, make it more secure.
+generated each time, that means each encryption key is used only once, to make it more secure.
 
 ## One key, one file 
 Directory with the keys, rather than all keys in a single file. It makes integrations easier with the 
@@ -16,12 +16,11 @@ key access loggers, intrusion detection systems (decoy files), etc.
 
 > [!WARNING]
 > Supported key pairs encodings are X509 for public and PKCS8 for private keys.
-> Depends on the Security Provider - designed for the OpenJDK
 
 ## How to use
 > [!IMPORTANT]
-> Repository depends on my [other repository](https://github.com/Ysdaeth/j-autocrypt). Maven and GitHub Packages are
-> not available to download before Jun 2026. To install, clone repo and use "mvn clean install" 
+> Repository depends on my [other repository](https://github.com/Ysdaeth/j-autocrypt). Maven and GitHub packages are
+> will be available to download after Jun 2026. 
 ### Add dependency
 First lets add dependency
 ```xml
@@ -59,7 +58,7 @@ keyStore.store(keyAlias, keyToStore, password);
 ---
 
 ### Get stored key
-When we have already stored out key, we can load it from the key store. Method returns optional.
+When we have already stored our key, we can load it from the key store. Method returns optional.
 ```java
 Optional<SecretKey> optionalKey = keyStore.getKey(alias, password);
 ```
