@@ -1,27 +1,28 @@
-# Key store for java
-Library to store the keys in the local storage in the easy and secure way.
+# Simpler Key store
 
-## Simple API
-API designed to store the keys in a secure and easy way, when all that you think about is 
+### Simple API
+- API designed to store the keys in a secure and easy way, when all that you think about is 
 to store the key and get the key.
 
-## Different passwords  
-Each key have its own password. 
-Additionally, using the same password generates a new encryption key everytime, that means each entry is 
-encrypted with different encryption key.
+### Different passwords  
+- Each stored key can be protected with different password.
 
-## One key, one file 
-Directory with the keys, rather than all keys in a single file. It makes integrations easier with the 
+### One key, one file 
+- Directory with the keys, rather than all keys in a single file. It makes integrations easier with the 
 key access loggers, intrusion detection systems (decoy files), etc.
+
+---
 
 > [!WARNING]
 > Supported key pairs encodings are X509 for public and PKCS8 for private keys.
 
-## How to use
 > [!IMPORTANT]
 > Repository depends on my [other repository](https://github.com/Ysdaeth/j-autocrypt). Maven and GitHub packages
-> will be available to download after Jun 2026. 
-### Add dependency
+> will be available to download after Jun 2026.
+
+## How to use
+ 
+### Add the dependency
 First lets add the dependency
 ```xml
 <dependency>
@@ -32,10 +33,10 @@ First lets add the dependency
 ```
 
 ---
-### Create key store
+### Create the key store
 Make sure that KeyStore is from the `dev.ysdaeth.keystore package`, Java KeyStore has the same name.  
-Keystore will create a directory in the specified `keyStorePath` and name of that directory will be `keyStoreName`. 
-In the directory `keyStoreName` will be placed files that contain metadata and encrypted keys.
+KeyStore will create a directory in the specified `keyStorePath` with `keyStoreName` name. 
+In the directory `keyStoreName` will be placed encrypted keys.
 ```java
 KeyStore keyStore = new KeyStore(keyStorePath, keyStoreName);
 ```
@@ -43,9 +44,9 @@ KeyStore keyStore = new KeyStore(keyStorePath, keyStoreName);
 ---
 
 ### Store the key
-First, we will generate a key to store it in the KeyStore. Storing the key pairs works the same way, but
-a public key is not encrypted. Now, we'll store generated key secured with password. One password generates
-different encryption keys to give more time to rotate the keys, if key store is leaked.
+First we will generate a key to store it in the KeyStore. Storing the key pairs works the same way, but
+a public key is not being encrypted. Now, we'll store the key and secure it with a password. Password generates each time 
+different random encryption key to encrypt your key in the store.
 ```java
 SecretKey keyToStore = KeyGenerator.getInstance("AES").generateKey(); //generate a key to store
 String keyAlias = "key-to-store"; // create alias for key to store
@@ -54,7 +55,11 @@ char[] password = "password".toCharArray(); // create password to secure key
 keyStore.store(keyAlias, keyToStore, password);
 ```
 
-> [!TIP] You use different passwords for each entry
+> [!TIP]
+> Each entry is encrypted with a different random key to give you more time for the key rotation when key store leaks, 
+> but leaking the keystore and password may be catastrophic. Remember that you can use 
+> different passwords for each entry
+
 ---
 
 ### Get stored key
