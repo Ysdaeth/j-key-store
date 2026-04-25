@@ -8,7 +8,7 @@ import java.util.Objects;
  * Entry can be created from {@link javax.crypto.SecretKey} or {@link java.security.KeyPair}.
  * It also contains string alias and public key bytes. Public key bytes does not need to be encrypted.
  */
-class KeyEntry {
+final class KeyEntry {
     private final String alias;
     private final String keyAlg;
     private byte[] key;

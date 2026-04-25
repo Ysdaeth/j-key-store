@@ -10,7 +10,7 @@ import dev.ysdaeth.autocrypt.*;
  *     <li>AES GCM</li>
  * </ul>
  */
-public class Encryptors {
+final class Encryptors {
 
     static final AlgorithmIdentifier IDENTIFIER_AES_GCM = new AlgorithmIdentifier((byte) 0x01, (byte) 0x06);
 

@@ -11,7 +11,7 @@ import java.util.Objects;
 /**
  * Class recreates the keys based on the provided key and key algorithm name.
  */
-public class KeyRevitalizer {
+final class KeyRevitalizer {
 
 
     /**

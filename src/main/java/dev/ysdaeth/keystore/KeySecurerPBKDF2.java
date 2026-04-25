@@ -32,7 +32,7 @@ import java.util.Objects;
  * </ul>
  * Array bytes values in the map are Base64 encoded.
  */
-class KeySecurerPBKDF2 {
+final class KeySecurerPBKDF2 {
 
     private static final String KDF_INSTANCE = "PBKDF2WithHmacSHA256";
     private static final String KDF_IDENTIFIER = "PBKDF2-HMAC-SHA256";
