@@ -60,10 +60,7 @@ public class KeyStore {
 
     /**
      * Saves key entry in the key store directory. Filename is hexadecimal hash sha256(alias) + extension.
-     * Key entry is secured with password. It uses PBKDF2 for key derivation from the password, and uses AES GCM
-     * encryption algorithm. PKBDK2 uses random salt for every key derivation, it means that every encryption key
-     * is different for each entry, even if the password is the same, but when password is leaked, then main key can be
-     * recreated. Key alias must be unique, no matter if assigned to key or key pair
+     * Key entry is secured with password. It uses {@link KeySecurerPBKDF2}. Key alias must be unique, no matter if assigned to key or key pair
      * @param alias unique alias for entry
      * @param keyPair key pair to be encrypted and saved
      * @param password password that will be used for key derivation with PBKDF2 to create encryption key
@@ -102,46 +99,41 @@ public class KeyStore {
     }
 
     /**
-     * Decrypts key entry from the key store directory and returns it as optional of secret key if exists, else
-     * returns empty. Throws {@link IORuntimeException} when key entry file exists, but was not accessible. When
+     * Decrypts key entry from the key store directory and returns it as optional of secret key if alias
+     * exists and is symmetry key instance. If exists but is not symmetric key or alias does not exist return false.
+     * Throws {@link IORuntimeException} when key file, but was not able to read. When
      * password does not match the entry password, then {@link UnrecoverableEntryException} is thrown.
-     * @param alias alias assigned to the key pair
-     * @param password password set for entry
-     * @return key pair if exist
+     * @param alias alias assigned to the key
+     * @param password password set for key entry
+     * @return secret key if both exists and entry contains only symmetric key
      * @throws UnrecoverableEntryException when password does not match.
      * @throws IORuntimeException when entry exists, but failed to read file from the drive
-     * @throws KeyEntrySymmetryException when key entry is for {@link KeyPair}
      */
     public Optional<SecretKey> getSecretKey(String alias, char[] password)
-            throws UnrecoverableEntryException, KeyEntrySymmetryException, IORuntimeException {
+            throws UnrecoverableEntryException, IORuntimeException {
 
         KeyEntry entry = loadKeyEntry(alias, password).orElse(null);
-        if(entry == null) return Optional.empty();
-
-        if(entry.publicKey() != null) throw new KeyEntrySymmetryException(
-                "Key with alias '"+ alias +"' is not symmetric key");
+        if (entry == null || entry.publicKey() != null) return Optional.empty();
 
         SecretKey key = KeyRevitalizer.revitalizeKey(entry.key(), entry.keyAlg());
         return Optional.of(key);
     }
 
     /**
-     * Returns key pair assigned to the specified key alias. Key pair must support x509 and PKCS8 encoding
+     * Decrypts key pair entry from the key store directory and returns it as optional of key pair if alias exists and
+     * entry contains asymmetric keys. If exists but entry does not contain asymmetric keys or alias does not
+     * exist return false.
      * @param alias alias assigned to the key pair
-     * @param password password set for entry
-     * @return key pair if exist
+     * @param password password set for key pair entry
+     * @return key pair if both exists and entry contains both keys
      * @throws UnrecoverableEntryException when password does not match.
      * @throws IORuntimeException when failed to read file from the drive
-     * @throws KeyEntrySymmetryException when key entry is for {@link SecretKey}
      */
     public Optional<KeyPair> getKeyPair(String alias, char[] password)
-            throws UnrecoverableEntryException, KeyEntrySymmetryException, IORuntimeException {
+            throws UnrecoverableEntryException, IORuntimeException {
 
-        KeyEntry entry = loadKeyEntry(alias,password).orElse(null);
-        if(entry == null) return Optional.empty();
-
-        if(entry.publicKey() == null) throw new KeyEntrySymmetryException(
-                "Key with alias '"+ alias +"' is not asymmetric key");
+        KeyEntry entry = loadKeyEntry(alias, password).orElse(null);
+        if (entry == null || entry.publicKey() == null) return Optional.empty();
 
         KeyPair keyPair;
         try{
@@ -166,6 +158,12 @@ public class KeyStore {
         }catch (IOException e){
             throw new IORuntimeException("Failed to remove key file." + e.getMessage(), e);
         }
+    }
+
+    public boolean contains(String alias){
+        String fileName = createFilename(alias);
+        Path filePath = Path.of(keyStorePath.toString(), fileName);
+        return Files.isRegularFile(filePath);
     }
 
     /**

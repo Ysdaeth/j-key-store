@@ -12,10 +12,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * Class is responsible for {@link KeyEntry} encryption which is converted to {@link SecuredKeyEntry},
@@ -110,16 +107,13 @@ final class KeySecurerPBKDF2 {
         AlgorithmOutput encryptedKey = new AlgorithmOutput(securedEntry.key());
 
         byte[] key;
+        SecretKey passwordKey;
         try{
-            SecretKey decryptionKey = createKey(password, iterations, salt, protectionKeyAlg, keySize);
-            key = manager.decrypt(encryptedKey, decryptionKey);
-        }catch (AlgorithmIdentificationException |
-                NoSuchAlgorithmException |
-                InvalidKeySpecException e){
-
+            passwordKey = createKey(password, iterations, salt, protectionKeyAlg, keySize);
+            key = manager.decrypt(encryptedKey, passwordKey);
+        }catch (Exception e){
+            if( e instanceof KeyException) throw new UnrecoverableEntryException("Password does not match. "+ e.getMessage());
             throw new RuntimeException("Key derivation failed." +e.getMessage(), e);
-        }catch (KeyException e){
-            throw new UnrecoverableEntryException("Password does not match. "+ e.getMessage());
         }
 
         return new KeyEntry(securedEntry.alias(), securedEntry.keyAlg(),key, securedEntry.pubKey());
