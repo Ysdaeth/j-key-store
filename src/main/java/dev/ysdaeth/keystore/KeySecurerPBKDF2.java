@@ -1,6 +1,5 @@
 package dev.ysdaeth.keystore;
 
-import dev.ysdaeth.autocrypt.AlgorithmIdentificationException;
 import dev.ysdaeth.autocrypt.AlgorithmIdentifier;
 import dev.ysdaeth.autocrypt.AlgorithmOutput;
 import dev.ysdaeth.autocrypt.EncryptionManager;
@@ -15,12 +14,12 @@ import java.security.spec.KeySpec;
 import java.util.*;
 
 /**
- * Class is responsible for {@link KeyEntry} encryption which is converted to {@link SecuredKeyEntry},
+ * Class is responsible for {@link UnsecuredEntry} encryption which is converted to {@link SecuredEntry},
  * and backward encrypting operation. Encryption process involves passed password that will be used for the
  * {@code Key Derivation Function (KDF)}. KDF generates random salt everytime when used for encryption, that means that
  * every key entry is encrypted with different secret key.
  * Creates KDF parameters map where it stores information about iterations, salt, etc. and stores it in
- * the {@link SecuredKeyEntry} params map. Params map keys are:
+ * the {@link SecuredEntry} params map. Params map keys are:
  * <ul>
  *     <li>salt</li>
  *     <li>iterations</li>
@@ -52,7 +51,7 @@ final class KeySecurerPBKDF2 {
      * If public key exists in the key entry, it is not encrypted. It creates KDF params
      * map where are stored information like salt, iterations,
      * generated encryption key size and algorithm.
-     * @param entry entry with symmetric or asymmetric keys
+     * @param unsecuredEntry entry with symmetric or asymmetric keys
      * @param password password to protect entry
      * @return encrypted key entry
      * @throws RuntimeException when:
@@ -62,7 +61,7 @@ final class KeySecurerPBKDF2 {
      *  <li>Misconfiguration</li>
      * </ul>
      */
-    SecuredKeyEntry secureEntry(KeyEntry entry, char[] password) throws RuntimeException {
+    SecuredEntry secureEntry(UnsecuredEntry unsecuredEntry, char[] password) throws RuntimeException {
         String protectionKeyAlg;
         int protectionKeySize;
         byte[] encrypted;
@@ -73,33 +72,34 @@ final class KeySecurerPBKDF2 {
             protectionKeyAlg = Encryptors.resolveKeyAlgorithm(AES_GCM_IDENTIFIER);
             protectionKeySize = Encryptors.resolveKeyLength(AES_GCM_IDENTIFIER);
             SecretKey encryptionKey = createKey(password, ITERATIONS, salt, protectionKeyAlg, protectionKeySize);
-            encrypted = manager.encrypt(entry.key(),encryptionKey, AES_GCM_IDENTIFIER).getEncoded();
+            byte[] secretKeyBytes = unsecuredEntry.getSecretKeyEntry().keyBytes();
+            encrypted = manager.encrypt(secretKeyBytes, encryptionKey, AES_GCM_IDENTIFIER).getEncoded();
         }catch (Exception e){
             throw new RuntimeException("Key encryption failed." + e.getMessage(), e);
         }
 
         Map<String,String> derivationParams =  buildProtectionParams(salt, ITERATIONS, protectionKeyAlg, protectionKeySize);
-        return SecuredKeyEntry.builder()
-                .alias(entry.alias())
-                .keyAlg(entry.keyAlg())
+        var builder = SecuredEntry.builder()
+                .alias(unsecuredEntry.alias())
+                .keyAlg(unsecuredEntry.getSecretKeyEntry().algorithm())
                 .key(encrypted)
-                .pubKey(entry.publicKey())
                 .derivationAlg(KDF_IDENTIFIER)
-                .kdfParams(derivationParams)
-                .build();
+                .kdfParams(derivationParams);
 
+        if(unsecuredEntry.getPublicKeyEntry() != null){
+            builder.pubKey(unsecuredEntry.getPublicKeyEntry().keyBytes());
+        }
+        return builder.build();
     }
 
-    /**
-     * Recreates encryption key derived from the password, and uses it to decrypt the key entry.
-     * @param securedEntry entry to decrypt
-     * @param password password used for protection
-     * @return decrypted key entry
-     * @throws UnrecoverableEntryException when key does not match or key securedEntry was forged
-     */
-    KeyEntry revealEntry(SecuredKeyEntry securedEntry, char[] password) throws UnrecoverableEntryException {
-        Map<String,String> derivationParams = securedEntry.kdfParams();
+    PublicKeyEntry revealPublicKeyEntry(SecuredEntry securedEntry){
+        if(securedEntry.pubKey() == null) return null;
+        return new PublicKeyEntry(securedEntry.pubKey(), securedEntry.keyAlg());
+    }
 
+    SecretKeyEntry revealSecretKey(SecuredEntry securedEntry, char[] password) throws UnrecoverableEntryException{
+
+        Map<String,String> derivationParams = securedEntry.kdfParams();
         byte[] salt = Base64.getDecoder().decode( derivationParams.get("salt") );
         int iterations = Integer.parseInt( derivationParams.get("iterations") );
         int keySize = Integer.parseInt(derivationParams.get("key-size"));
@@ -116,8 +116,9 @@ final class KeySecurerPBKDF2 {
             throw new RuntimeException("Key derivation failed." +e.getMessage(), e);
         }
 
-        return new KeyEntry(securedEntry.alias(), securedEntry.keyAlg(),key, securedEntry.pubKey());
+        return new SecretKeyEntry(key, securedEntry.keyAlg());
     }
+
 
     /**
      * Saves KDF params with salt, iterations, encryption key size and length, to recreate encryption key.

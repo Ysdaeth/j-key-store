@@ -16,13 +16,10 @@ final class KeyRevitalizer {
 
     /**
      * Creates a key from the encoded bytes and provided key algorithm name
-     * @param key encoded key bytes {@link Key#getEncoded()}
-     * @param algorithm key algorithm name {@link Key#getAlgorithm()}
      * @return symmetric key
      */
-    static SecretKey revitalizeKey(byte[] key, String algorithm) {
-        Objects.requireNonNull(key, "Key bytes must not be null");
-        return new SecretKeySpec(key, algorithm);
+    static SecretKey revitalizeSymmetricKey(SecretKeyEntry secretKeyEntry) {
+        return new SecretKeySpec(secretKeyEntry.keyBytes(), secretKeyEntry.algorithm());
     }
 
     /**
@@ -37,13 +34,39 @@ final class KeyRevitalizer {
     static KeyPair revitalizeKeyPair(byte[] privateKey, byte[] publicKey, String keyAlgorithm)
             throws NoSuchAlgorithmException, InvalidKeySpecException {
 
-        Objects.requireNonNull(privateKey,"Private key must not be null");
-        Objects.requireNonNull(publicKey,"Public key must not be null");
-
         KeyFactory kf = KeyFactory.getInstance(keyAlgorithm);
-        PrivateKey pv = kf.generatePrivate(new PKCS8EncodedKeySpec(privateKey));
-        PublicKey pub = kf.generatePublic(new X509EncodedKeySpec(publicKey));
+        PrivateKey pv = revitalizePrivateKey(kf,privateKey);
+        PublicKey pub = revitalizePublicKey(kf,publicKey);
         return new KeyPair(pub, pv);
+    }
+
+    static PublicKey revitalizePublicKey(PublicKeyEntry publicKeyEntry)
+            throws NoSuchAlgorithmException, InvalidKeySpecException{
+
+        KeyFactory kf = KeyFactory.getInstance(publicKeyEntry.algorithm());
+        return revitalizePublicKey(kf, publicKeyEntry.keyBytes());
+    }
+
+    static PrivateKey revitalizePrivateKey(SecretKeyEntry secretKeyEntry)
+            throws NoSuchAlgorithmException, InvalidKeySpecException{
+
+        KeyFactory kf = KeyFactory.getInstance(secretKeyEntry.algorithm());
+        return revitalizePrivateKey(kf,secretKeyEntry.keyBytes());
+    }
+
+    private static PublicKey revitalizePublicKey(KeyFactory keyFactory, byte[] publicKey)
+            throws InvalidKeySpecException{
+
+        if(publicKey == null) throw new IllegalArgumentException("Public key bytes must not be null");
+        return keyFactory.generatePublic(new X509EncodedKeySpec(publicKey));
+    }
+
+    private static PrivateKey revitalizePrivateKey(KeyFactory keyFactory, byte[] privateKey)
+            throws InvalidKeySpecException{
+
+        if(privateKey == null) throw new IllegalArgumentException("Private key bytes must not be null");
+
+        return keyFactory.generatePrivate(new PKCS8EncodedKeySpec(privateKey));
     }
 
 }

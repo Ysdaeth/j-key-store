@@ -50,9 +50,10 @@ public class KeyStore {
      * @throws EntryAlreadyExistsException when key with specified alias already exists
      */
     public void store(String alias, SecretKey key, char[] password) throws IORuntimeException, EntryAlreadyExistsException {
-        KeyEntry entry = new KeyEntry(alias, key.getAlgorithm(), key.getEncoded());
+        SecretKeyEntry secretKeyEntry = new SecretKeyEntry(key.getEncoded(), key.getAlgorithm());
+        UnsecuredEntry unsecuredEntry = new UnsecuredEntry(alias, secretKeyEntry);
         try {
-            storeKeyEntry(entry, password);
+            storeKeyEntry(unsecuredEntry, password);
         }catch (IOException e){
             throw new IORuntimeException("Failed to save the keyEntry." + e.getMessage(), e);
         }
@@ -70,11 +71,13 @@ public class KeyStore {
     public void store(String alias, KeyPair keyPair, char[] password) throws IORuntimeException, EntryAlreadyExistsException {
         PrivateKey privateKey = keyPair.getPrivate();
         PublicKey publicKey = keyPair.getPublic();
-        String keyAlg = privateKey.getAlgorithm();
 
-        KeyEntry entry = new KeyEntry(alias, keyAlg, privateKey.getEncoded(), publicKey.getEncoded());
+        SecretKeyEntry privateKeyEntry = new SecretKeyEntry(privateKey.getEncoded(), privateKey.getAlgorithm());
+        PublicKeyEntry publicKeyEntry = new PublicKeyEntry(publicKey.getEncoded(), privateKeyEntry.algorithm());
+        UnsecuredEntry unsecuredEntry = new UnsecuredEntry(alias, privateKeyEntry, publicKeyEntry);
+
         try {
-            storeKeyEntry(entry, password);
+            storeKeyEntry(unsecuredEntry, password);
         }catch (IOException e){
             throw new IORuntimeException("Failed to save the keyEntry." + e.getMessage(), e);
         }
@@ -83,17 +86,17 @@ public class KeyStore {
     /**
      * Encrypt key entry and store it on the drive in the specified directory. Creates sha256(alias) filename
      * + extension
-     * @param entry entry to encrypt and store
+     * @param unsecuredEntry entry to encrypt and store
      * @param password password for the key derivation
      * @throws IOException when key could not be saved due to IO general reason
      */
-    private void storeKeyEntry(KeyEntry entry, char[] password) throws IOException {
-        String filename = createFilename(entry.alias());
+    private void storeKeyEntry(UnsecuredEntry unsecuredEntry, char[] password) throws IOException {
+        String filename = createFilename(unsecuredEntry.alias());
         Path filePath = Path.of(keyStorePath.toString(),filename);
         if(filePath.toFile().exists()) throw new EntryAlreadyExistsException(
-                "Entry with specified alias already exists: '" + entry.alias() +"'");
+                "Entry with specified alias already exists or hash collision for: '" + unsecuredEntry.alias() +"'");
 
-        SecuredKeyEntry secured = keySecurerPBKDF2.secureEntry(entry, password);
+        SecuredEntry secured = keySecurerPBKDF2.secureEntry(unsecuredEntry, password);
         String content = SecureKeyEntrySerializer.serialize(secured);
         Files.writeString(filePath,content);
     }
@@ -108,14 +111,16 @@ public class KeyStore {
      * @return secret key if both exists and entry contains only symmetric key
      * @throws UnrecoverableEntryException when password does not match.
      * @throws IORuntimeException when entry exists, but failed to read file from the drive
+     * @throws KeySymmetryException when key entry is not symmetric
      */
     public Optional<SecretKey> getSecretKey(String alias, char[] password)
-            throws UnrecoverableEntryException, IORuntimeException {
+            throws UnrecoverableEntryException, IORuntimeException, KeySymmetryException {
 
-        KeyEntry entry = loadKeyEntry(alias, password).orElse(null);
-        if (entry == null || entry.publicKey() != null) return Optional.empty();
-
-        SecretKey key = KeyRevitalizer.revitalizeKey(entry.key(), entry.keyAlg());
+        SecuredEntry securedEntry = loadSecuredEntry(alias);
+        if(securedEntry == null) return Optional.empty();
+        if(securedEntry.pubKey() != null) throw new KeySymmetryException("Key is not symmetric");
+        SecretKeyEntry secretKeyEntry = keySecurerPBKDF2.revealSecretKey(securedEntry, password);
+        SecretKey key = KeyRevitalizer.revitalizeSymmetricKey(secretKeyEntry);
         return Optional.of(key);
     }
 
@@ -128,21 +133,68 @@ public class KeyStore {
      * @return key pair if both exists and entry contains both keys
      * @throws UnrecoverableEntryException when password does not match.
      * @throws IORuntimeException when failed to read file from the drive
+     * @throws KeySymmetryException when key entry is not asymmetric key pair
      */
     public Optional<KeyPair> getKeyPair(String alias, char[] password)
-            throws UnrecoverableEntryException, IORuntimeException {
+            throws UnrecoverableEntryException, IORuntimeException, KeySymmetryException {
 
-        KeyEntry entry = loadKeyEntry(alias, password).orElse(null);
-        if (entry == null || entry.publicKey() == null) return Optional.empty();
+        PublicKey publicKey = getPublicKey(alias).orElse(null);
+        if(publicKey == null) throw new KeySymmetryException("Key entry is not a key pair");
 
-        KeyPair keyPair;
+        PrivateKey privateKey = getPrivateKey(alias, password).orElse(null);
+        if(privateKey == null) return Optional.empty();
+
+        KeyPair keyPair = new KeyPair(publicKey, privateKey);
+        return Optional.of(keyPair);
+    }
+
+    /**
+     * Returns Public key from the key store directory as optional if alias exists.
+     * It does not require password as public keys are not encrypted.
+     * @param alias alias assigned to the key pair
+     * @return public key if exists
+     * @throws IORuntimeException when failed to read file from the drive
+     */
+    public Optional<PublicKey> getPublicKey(String alias) throws IORuntimeException{
+        SecuredEntry securedEntry = loadSecuredEntry(alias);
+        if(securedEntry == null ) return Optional.empty();
+        PublicKeyEntry publicKeyEntry = keySecurerPBKDF2.revealPublicKeyEntry(securedEntry);
+        if(publicKeyEntry == null) return Optional.empty();
+
+        PublicKey publicKey;
         try{
-            keyPair = KeyRevitalizer.revitalizeKeyPair(entry.key(), entry.publicKey(),entry.keyAlg());
-        }catch (NoSuchAlgorithmException | InvalidKeySpecException e ){
+            publicKey = KeyRevitalizer.revitalizePublicKey(publicKeyEntry);
+        }catch (NoSuchAlgorithmException | InvalidKeySpecException e){
             throw new RuntimeException("Failed key revitalization from key entry."  + e.getMessage(), e);
         }
 
-        return Optional.of(keyPair);
+        return Optional.of(publicKey);
+    }
+
+    /**
+     * Decrypts private key entry from the key store directory and returns it as optional of Private key if alias exists.
+     * @param alias alias assigned to the key pair
+     * @param password password set for key pair entry
+     * @return Private key if exists
+     * @throws UnrecoverableEntryException when password does not match.
+     * @throws IORuntimeException when failed to read file from the drive
+     * @throws KeySymmetryException when key entry is not asymmetric key pair
+     */
+    public Optional<PrivateKey> getPrivateKey(String alias, char[] password)
+            throws IORuntimeException, UnrecoverableEntryException {
+
+        SecuredEntry securedEntry = loadSecuredEntry(alias);
+        if(securedEntry == null ) return Optional.empty();
+        SecretKeyEntry secretKeyEntry = keySecurerPBKDF2.revealSecretKey(securedEntry,password);
+
+        PrivateKey privateKey;
+        try{
+            privateKey = KeyRevitalizer.revitalizePrivateKey(secretKeyEntry);
+        }catch (NoSuchAlgorithmException | InvalidKeySpecException e){
+            throw new RuntimeException("Failed key revitalization from key entry."  + e.getMessage(), e);
+        }
+
+        return Optional.of(privateKey);
     }
 
     /**
@@ -166,33 +218,19 @@ public class KeyStore {
         return Files.isRegularFile(filePath);
     }
 
-    /**
-     * Loads the secured key entry file, and performs decryption operation. Returns empty if alias does not exist,
-     * else return optional of key entry
-     * @param alias alias of the key entry
-     * @param password password used for generating encryption key
-     * @return decrypted key entry
-     * @throws IORuntimeException when file is not accessible
-     * @throws UnrecoverableEntryException whe password does not match encrypted key entry
-     */
-    private Optional<KeyEntry> loadKeyEntry(String alias, char[] password)
-            throws IORuntimeException, UnrecoverableEntryException {
-
+    private SecuredEntry loadSecuredEntry(String alias) throws IORuntimeException {
         String content;
         String filename = createFilename(alias);
         Path filePath = Path.of(keyStorePath.toString(),filename);
 
-        if(!filePath.toFile().isFile()) return Optional.empty();
+        if(!filePath.toFile().isFile()) return null;
         try{
             content = Files.readString(filePath);
         }catch (IOException e){
             throw new IORuntimeException("Failed to read key entry file. " + e.getMessage(), e);
         }
 
-        SecuredKeyEntry securedEntry = SecureKeyEntrySerializer.deserialize(content);
-        KeyEntry entry = keySecurerPBKDF2.revealEntry(securedEntry, password);
-
-        return Optional.of(entry);
+        return SecureKeyEntrySerializer.deserialize(content);
     }
 
     /**

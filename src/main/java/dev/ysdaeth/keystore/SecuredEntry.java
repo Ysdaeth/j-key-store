@@ -14,19 +14,19 @@ import java.util.Objects;
  * @param kdfAlg Key Derivation Function algorithm, that converts password to the encryption key
  * @param kdfParams parameters to recreate encryption key.
  */
-record SecuredKeyEntry(String alias,
-                       String keyAlg,
-                       byte[] key,
-                       byte[] pubKey,
-                       String kdfAlg,
-                       Map<String,String> kdfParams
-) {
-
-    SecuredKeyEntry(String alias,
+record SecuredEntry(String alias,
                     String keyAlg,
                     byte[] key,
+                    byte[] pubKey,
                     String kdfAlg,
-                    Map<String,String> kdfParams) {
+                    Map<String,String> kdfParams
+) {
+
+    SecuredEntry(String alias,
+                 String keyAlg,
+                 byte[] key,
+                 String kdfAlg,
+                 Map<String,String> kdfParams) {
         this(alias, keyAlg, key, null, kdfAlg, kdfParams);
     }
 
@@ -37,7 +37,7 @@ record SecuredKeyEntry(String alias,
      * @param key encrypted key bytes
      * @param kdfParams protection parameters like key derivation function, or salt, etc.
      */
-    SecuredKeyEntry {
+    SecuredEntry {
         Objects.requireNonNull(alias, "alias must not be null");
         Objects.requireNonNull(keyAlg, "Key algorithm must not be null");
         Objects.requireNonNull(key, "Key must not be null");
@@ -49,11 +49,11 @@ record SecuredKeyEntry(String alias,
     }
 
     static class Builder {
-        private String alias;
-        private String keyAlg;
-        private byte[] key;
-        private byte[] pubKey;
-        private String kdfAlg;
+        private String alias = null;
+        private String keyAlg = null;
+        private byte[] key = null;
+        private byte[] pubKey = null;
+        private String kdfAlg = null;
         private Map<String,String> kdfParams = new HashMap<>();
 
         Builder alias(String alias){
@@ -87,8 +87,8 @@ record SecuredKeyEntry(String alias,
             this.kdfParams.put(entry.getKey(), entry.getValue());
             return this;
         }
-        SecuredKeyEntry build(){
-            return new SecuredKeyEntry(alias, keyAlg, key, pubKey, kdfAlg, kdfParams);
+        SecuredEntry build(){
+            return new SecuredEntry(alias, keyAlg, key, pubKey, kdfAlg, kdfParams);
         }
     }
 }

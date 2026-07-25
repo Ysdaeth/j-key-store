@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 
 final class SecureKeyEntrySerializer {
-    private static final Map<String, BiConsumer<String, SecuredKeyEntry.Builder>> dynamicSetter = new HashMap<>();
+    private static final Map<String, BiConsumer<String, SecuredEntry.Builder>> dynamicSetter = new HashMap<>();
     static{
         dynamicSetter.put("ALIAS", (val,b)->b.alias(val));
         dynamicSetter.put("ALG", (val,b)->b.keyAlg(val));
@@ -16,7 +16,7 @@ final class SecureKeyEntrySerializer {
         dynamicSetter.put("KDF-PARAM", (val,b)->b.addKdfParam( parseProtectionEntry(val) ));
     }
 
-    static String serialize(SecuredKeyEntry entry){
+    static String serialize(SecuredEntry entry){
         String key = Base64.getEncoder().encodeToString(entry.key());
         String pubKey = entry.pubKey() == null? null : Base64.getEncoder().encodeToString(entry.pubKey());
         StringBuilder builder = new StringBuilder();
@@ -34,8 +34,14 @@ final class SecureKeyEntrySerializer {
         return builder.toString();
     }
 
-    static SecuredKeyEntry deserialize(String serialized) {
-        SecuredKeyEntry.Builder secureEntry = new SecuredKeyEntry.Builder();
+    /**
+     * Deserialize content and map it to encrypted key file
+     * @param serialized serialized content with encrypted keys and metadata
+     * @return Deserialized object
+     * @throws KeyEntryException when file is malformed
+     */
+    static SecuredEntry deserialize(String serialized) throws KeyEntryException {
+        SecuredEntry.Builder secureEntry = new SecuredEntry.Builder();
 
         String[] lines = serialized.split("\n");
         for(int i = 0; i< lines.length; i++){
@@ -48,8 +54,9 @@ final class SecureKeyEntrySerializer {
         return secureEntry.build();
     }
 
-    private static String[] parseTag(String line){
+    private static String[] parseTag(String line) throws KeyEntryException{
         int index = line.indexOf(":");
+        if(index == -1) throw new KeyEntryException("Malformed key entry, tag value separator ':' not found");
         String tag = line.substring(0,index);
         String value = line.substring(index + 1);
         return new String[]{tag, value};

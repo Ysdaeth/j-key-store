@@ -52,23 +52,7 @@ class KeyStoreTest {
     }
 
     @Test
-    void save_shouldCreateKeyFile_fromKeyPair() throws Exception {
-        String keyStoreName = "shouldCreateFile_fromAsymmetric";
-        KeyPair keyPair = KeyPairGenerator.getInstance("RSA").generateKeyPair();
-
-        String alias = StringGenerator.getInstance(GeneratorType.URL_SAFE).generate(16);
-        char[] password = "password".toCharArray();
-
-        KeyStore keyStore = new KeyStore(testDir, keyStoreName);
-        keyStore.store(alias, keyPair, password);
-        String expectedFilename = createFilename(alias);
-
-        boolean exists = Path.of(testDir.toString(),keyStoreName,expectedFilename).toFile().isFile();
-        Assertions.assertTrue(exists,"Key file does not exist after saving in the store");
-    }
-
-    @Test
-    void getSecretKey_shouldReturnTheSameKeyAlgorithmAndBytes_whenExist() throws Exception {
+    void getSecretKey_shouldReturnEqualKey() throws Exception { // X fix name, split bytes and alg to 2 tests
         KeyStore keyStore = createStore("getSecretKey_shouldEqual_onGet");
 
         String alias = "alias";
@@ -78,11 +62,18 @@ class KeyStoreTest {
         keyStore.store(alias, expectedKey, password);
         SecretKey actualKey = keyStore.getSecretKey(alias,password).orElse(null);
 
-        Assertions.assertArrayEquals(expectedKey.getEncoded(),actualKey.getEncoded(),
-                "method should return the same encoded bytes");
+        Assertions.assertNotNull(actualKey,"Key should be returend from the key store");
 
-        Assertions.assertEquals(expectedKey.getAlgorithm(), actualKey.getAlgorithm(),
-                "method should return the same key algorithm");
+        byte[] expectedBytes = expectedKey.getEncoded();
+        byte[] actualBytes = actualKey.getEncoded();
+        Assertions.assertArrayEquals(
+                expectedBytes, actualBytes, "Key bytes should be equal");
+
+        String expectedAlgorithm = expectedKey.getAlgorithm();
+        String actualAlgorithm = actualKey.getAlgorithm();
+
+        Assertions.assertEquals(
+                expectedAlgorithm, actualAlgorithm, "Key algorithm should be equal");
     }
 
     @Test
@@ -90,31 +81,47 @@ class KeyStoreTest {
         String alias = "alias";
         SecretKey key = KeyGenerator.getInstance("AES").generateKey();
         char[] password = "password".toCharArray();
-        char[] incorrectPassword = "incorrect".toCharArray();
 
         KeyStore keyStore = createStore("getSecretKey_shouldThrow_onWrongPwd");
         keyStore.store(alias,key, password);
 
+        char[] incorrectPassword = "incorrect".toCharArray();
         Assertions.assertThrowsExactly(UnrecoverableEntryException.class,
                 ()->keyStore.getSecretKey(alias,incorrectPassword)
         );
     }
 
     @Test
-    void getSecretKey_shouldReturnEmpty_whenEntryIsAsymmetric() throws Exception {
+    void getSecretKey_shouldThrowKeySymmetryException_whenKeyIsAsymmetric() throws Exception {
         String alias = "alias";
         SecretKey key = KeyGenerator.getInstance("AES").generateKey();
         char[] password = "password".toCharArray();
 
-        KeyStore keyStore = createStore("getSecretKey_shouldReturnEmpty_onWrongSymmetry");
+        KeyStore keyStore = createStore("getSecretKey_shouldThrow_onWrongSymmetry");
         keyStore.store(alias,key, password);
 
-        boolean isPresent = keyStore.getKeyPair(alias, password).isPresent();
-        Assertions.assertFalse(isPresent,"Should return empty when key symmetry does not match");
+        Assertions.assertThrows(KeySymmetryException.class,()->{
+            keyStore.getKeyPair(alias,password);
+        },"Should throw exception when key symmetry is incorrect");
     }
 
     @Test
-    void getKeyPair_shouldReturnTheSameKeyPairAlgorithmAndBytes_whenExist() throws Exception {
+    void getKeyPair_shouldThrowKeySymmetryException_whenEntryIsSymmetric() throws Exception {
+        String alias = "alias";
+        KeyPair pair = KeyPairGenerator.getInstance("RSA").generateKeyPair();
+        char[] password = "password".toCharArray();
+
+        KeyStore keyStore = createStore("getKeyPair_shouldThrow_onWrongSymmetry");
+        keyStore.store(alias, pair, password);
+
+        Assertions.assertThrows(KeySymmetryException.class,()->{
+            keyStore.getSecretKey(alias,password);
+        },"Should throw exception when key symmetry is incorrect");
+
+    }
+
+    @Test
+    void getKeyPair_shouldReturnEqualKeyPair() throws Exception {
         KeyStore keyStore = createStore("getKeyPair_shouldBeEqual_onGet");
 
         String alias = "alias";
@@ -123,6 +130,8 @@ class KeyStoreTest {
         KeyPair expectedKeyPair = KeyPairGenerator.getInstance("RSA").generateKeyPair();
         keyStore.store(alias, expectedKeyPair, password);
         KeyPair actualKeyPair = keyStore.getKeyPair(alias,password).orElse(null);
+
+        Assertions.assertNotNull(actualKeyPair,"Key store should return key pair");
 
         Assertions.assertArrayEquals(
                 expectedKeyPair.getPrivate().getEncoded(),
@@ -142,19 +151,6 @@ class KeyStoreTest {
     }
 
     @Test
-    void getKeyPair_shouldReturnEmpty_whenEntryIsSymmetric() throws Exception {
-        String alias = "alias";
-        KeyPair pair = KeyPairGenerator.getInstance("RSA").generateKeyPair();
-        char[] password = "password".toCharArray();
-
-        KeyStore keyStore = createStore("getKeyPair_shouldReturnEmpty_onWrongSymmetry");
-        keyStore.store(alias, pair, password);
-
-        boolean isPresent = keyStore.getSecretKey(alias, password).isPresent();
-        Assertions.assertFalse(isPresent,"Should return empty when key symmetry does not match");
-    }
-
-    @Test
     void getKeyPair_shouldThrowException_whenPasswordDoesNotMatch() throws Exception {
         String alias = "alias";
         KeyPair pair = KeyPairGenerator.getInstance("RSA").generateKeyPair();
@@ -164,9 +160,10 @@ class KeyStoreTest {
         keyStore.store(alias, pair, password);
 
         Assertions.assertThrowsExactly(UnrecoverableEntryException.class,
-                ()->keyStore.getSecretKey(alias, "incorrect".toCharArray())
+                ()->keyStore.getKeyPair(alias, "incorrect".toCharArray())
         );
     }
+
 
     @Test
     void contains_shouldReturnTrue_whenEntryExists() throws Exception {
@@ -177,10 +174,8 @@ class KeyStoreTest {
         KeyStore keyStore = createStore("contains_shouldReturnTrue");
         keyStore.store(alias, pair, password);
 
-        Assertions.assertThrowsExactly(UnrecoverableEntryException.class,
-                ()->keyStore.getSecretKey(alias, "incorrect".toCharArray()),
-                "Should return true when entry exist"
-        );
+        boolean containsKey = keyStore.contains(alias);
+        Assertions.assertTrue(containsKey,"Should return true when key exists");
     }
 
     @Test
@@ -189,7 +184,7 @@ class KeyStoreTest {
         KeyStore keyStore = createStore("contains_shouldReturnFalse");
 
         Assertions.assertFalse(keyStore.contains(alias),
-                "Should return true when entry exist");
+                "Should return false when entry does not exist");
     }
 
     @Test
@@ -214,6 +209,42 @@ class KeyStoreTest {
 
         boolean notRemovedExists = Files.exists(toNotRemovePath);
         Assertions.assertTrue(notRemovedExists, "Incorrect key file was removed");
+    }
+
+    @Test
+    void getPrivateKey_shouldReturnPrivateKey() throws Exception{
+        String keyStoreName = "shouldReturnPrivateKey";
+        String alias ="alias";
+        KeyStore keyStore = new KeyStore(testDir, keyStoreName);
+
+        char[] password = "password".toCharArray();
+        KeyPair keyPair = KeyPairGenerator.getInstance("RSA").generateKeyPair();
+        keyStore.store(alias, keyPair, password);
+
+        Assertions.assertDoesNotThrow(()->{
+            keyStore.getPrivateKey(alias, password);
+        },"Get private key should not throw exception");
+
+        PrivateKey privateKey = keyStore.getPrivateKey(alias, password).orElse(null);
+        Assertions.assertNotNull(privateKey,"Should return private key");
+    }
+
+    @Test
+    void getPublicKey_shouldReturnPublicKey() throws Exception{
+        String keyStoreName = "shouldReturnPublicKey";
+        String alias ="alias";
+        KeyStore keyStore = new KeyStore(testDir, keyStoreName);
+
+        char[] password = "password".toCharArray();
+        KeyPair keyPair = KeyPairGenerator.getInstance("RSA").generateKeyPair();
+        keyStore.store(alias, keyPair, password);
+
+        Assertions.assertDoesNotThrow(()->{
+            keyStore.getPublicKey(alias);
+        },"Get public key should not throw exception");
+
+        PublicKey publicKey = keyStore.getPublicKey(alias).orElse(null);
+        Assertions.assertNotNull(publicKey,"Should return public key");
     }
 
     private KeyStore createStore(String storeNamePrefix) throws Exception {

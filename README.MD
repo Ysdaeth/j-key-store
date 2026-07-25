@@ -56,16 +56,25 @@ keyStore.store(keyAlias, keyToStore, password);
 ```
 
 > [!TIP]
-> Each entry is encrypted with a different random key to give you more time for the key rotation when key store leaks, 
+> Each unsecuredEntry is encrypted with a different random key to give you more time for the key rotation when key store leaks, 
 > but leaking the keystore and password may be catastrophic. Remember that you can use 
-> different passwords for each entry
+> different passwords for each unsecuredEntry
 
 ---
 
 ### Get stored key
 When we have already stored our key, we can load it from the key store. Method returns optional.
 ```java
-Optional<SecretKey> optionalKey = keyStore.getKey(alias, password);
+Optional<SecretKey> optionalKey = keyStore.getSecretKey(alias, password);
+```
+
+### Other
+Other KeyStore methods are self-explanatory
+```java
+keyStore.getPrivateKey(alias, password);
+keyStore.getPublicKey(alias);
+keyStore.delete(alias);
+keyStore.contains(alias);
 ```
 
 ## Requirements

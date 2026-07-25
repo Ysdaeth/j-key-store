@@ -13,12 +13,12 @@ import static org.junit.jupiter.api.Assertions.*;
 class KeyRevitalizerTest {
 
     @Test
-    void revitalizeKeyPair_shouldRevitalizeRSAKeyPair() throws Exception {
+    void revitalizeKeyPair_shouldRevitalizeRSASymmetricKeyPair() throws Exception {
         testAlgorithm("RSA", 2048);
     }
 
     @Test
-    void revitalizeKeyPair_shouldRevitalizeDSAKeyPair() throws Exception {
+    void revitalizeKeyPair_shouldRevitalizeDSASymmetricKeyPair() throws Exception {
         testAlgorithm("DSA", 2048);
     }
 
@@ -44,28 +44,21 @@ class KeyRevitalizerTest {
     }
 
     @Test
-    void revitalizeKeyPair_shouldThrowOnNullPrivateKey() {
-        assertThrows(NullPointerException.class, () ->
-                KeyRevitalizer.revitalizeKeyPair(null, new byte[]{1}, "RSA")
+    void revitalizeKeyPair_shouldThrowOnNullKeys() {
+        assertThrows(IllegalArgumentException.class, () ->
+                KeyRevitalizer.revitalizeKeyPair(null, null, "RSA")
         );
     }
 
     @Test
-    void revitalizeKeyPair_shouldThrowOnNullPublicKey() {
-        assertThrows(NullPointerException.class, () ->
-                KeyRevitalizer.revitalizeKeyPair(new byte[]{1}, null, "RSA")
-        );
-    }
-
-    @Test
-    void revitalizeKeyPair_shouldThrowOnInvalidAlgorithm() {
+    void revitalizeSymmetricKeyPair_shouldThrowOnInvalidAlgorithm() {
         assertThrows(NoSuchAlgorithmException.class, () ->
                 KeyRevitalizer.revitalizeKeyPair(new byte[]{1}, new byte[]{1}, "INVALID")
         );
     }
 
     @Test
-    void revitalizeKeyPair_shouldThrowOnInvalidKeySpec() {
+    void revitalizeKeyPair_shouldThrowOnInvalidSymmetricKeySpec() {
         assertThrows(InvalidKeySpecException.class, () ->
                 KeyRevitalizer.revitalizeKeyPair(new byte[]{1,2,3}, new byte[]{4,5,6}, "RSA")
         );
